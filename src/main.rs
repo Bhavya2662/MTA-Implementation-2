@@ -4,7 +4,7 @@ use curv::arithmetic::traits::Converter;
 use curv::arithmetic::Zero;
 use curv::arithmetic::Samplable;
 use curv::elliptic::curves::{secp256_k1::Secp256k1, Point, Scalar};
-fn mta_secp256k1(
+fn mta_2(
     alice_secret: &Scalar<Secp256k1>,
     bob_secret: &Scalar<Secp256k1>, 
     r1: &BigInt,
@@ -99,7 +99,7 @@ fn main() {
     let (ek, dk) = Paillier::keypair().keys();
     let r1 = BigInt::sample_below(&ek.n);
     let r2 = BigInt::sample_below(&ek.n);
-    let (delta_1, delta_2) = mta_secp256k1(&alice_input, &bob_input, &r1, &r2, &ek, &dk);
+    let (delta_1, delta_2) = mta_2(&alice_input, &bob_input, &r1, &r2, &ek, &dk);
 
     let left = &delta_1.to_bigint() + &delta_2.to_bigint();
     // dbg!(&left);
