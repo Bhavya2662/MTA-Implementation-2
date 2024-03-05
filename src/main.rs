@@ -7,6 +7,8 @@ use curv::elliptic::curves::{secp256_k1::Secp256k1, Point, Scalar};
 fn mta_2(
     alice_secret: &Scalar<Secp256k1>,
     bob_secret: &Scalar<Secp256k1>, 
+    r1: &BigInt,
+    r2: &BigInt,
 ) -> (Scalar<Secp256k1>, Scalar<Secp256k1>) {
     // // Generate Paillier key pair
     let (ek, dk) = Paillier::keypair().keys();
@@ -14,11 +16,10 @@ fn mta_2(
     // Alice's secret shares
     let a1 = &alice_secret.to_bigint();
 
-    let r1 = BigInt::sample_below(&ek.n);
    
     // Bob's secret shares
     let a2 = &bob_secret.to_bigint();
-    let r2 = BigInt::sample_below(&ek.n);
+    
 
     // 1. Alice computes CA = EncryptA(a1)
     let c_alice = Paillier::encrypt(&ek, RawPlaintext::from(&a1.clone()));
@@ -38,9 +39,6 @@ fn mta_2(
     // 6. Bob sets additive share δ2 = -β′ mod q
     let delta_2 = Scalar::from((BigInt::zero() - &beta_prime) % &ek.n);
 
-    // 7. Send CB to Alice
-    // (Simulation: omitted as it's not part of the protocol)
-
     // 8. Alice decrypts α' = dec(CB)
     let dec_alice = Paillier::decrypt(&dk, &c_bob);
 
@@ -48,7 +46,7 @@ fn mta_2(
     let delta_1 = Scalar::from(BigInt::from(dec_alice) % &ek.n);
     let left = &delta_1.to_bigint() + &delta_2.to_bigint();
     // dbg!(&left);
-    let right = (a1*&r2) + (a2*&r1);
+    let right = (a1*r2) + (a2*r1);
     // dbg!(&right);
     assert_eq!(left, right, "Verification failed: Left side ({}) is not equal to right side ({})", left, right);
 
@@ -95,8 +93,10 @@ fn mta(a: &Scalar<Secp256k1>, b: &Scalar<Secp256k1>) -> (Scalar<Secp256k1>, Scal
 fn main() {
     let alice_input = Scalar::<Secp256k1>::random();
     let bob_input = Scalar::<Secp256k1>::random();
-    
-    let (delta_1, delta_2) = mta_2(&alice_input, &bob_input);
+    let Zp = Scalar::<Secp256k1>::group_order();    
+    let r1 = BigInt::sample_below(&Zp);
+    let r2 = BigInt::sample_below(&Zp);
+    let (delta_1, delta_2) = mta_2(&alice_input, &bob_input, &r1, &r2);
 
     // let left = &delta_1.to_bigint() + &delta_2.to_bigint();
     // // dbg!(&left);
