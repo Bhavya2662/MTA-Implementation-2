@@ -7,32 +7,24 @@ use curv::elliptic::curves::{secp256_k1::Secp256k1, Point, Scalar};
 fn mta_2(
     alice_secret: &Scalar<Secp256k1>,
     bob_secret: &Scalar<Secp256k1>, 
-    r1: &BigInt,
-    r2: &BigInt,
-    ek: &EncryptionKey,
-    dk: &DecryptionKey,
 ) -> (Scalar<Secp256k1>, Scalar<Secp256k1>) {
-    // Generate Paillier key pair
+    // // Generate Paillier key pair
     let (ek, dk) = Paillier::keypair().keys();
-
 
     // Alice's secret shares
     let a1 = &alice_secret.to_bigint();
-    
 
+    let r1 = BigInt::sample_below(&ek.n);
+   
     // Bob's secret shares
-    
     let a2 = &bob_secret.to_bigint();
+    let r2 = BigInt::sample_below(&ek.n);
 
     // 1. Alice computes CA = EncryptA(a1)
     let c_alice = Paillier::encrypt(&ek, RawPlaintext::from(&a1.clone()));
 
     // 2. Alice computes CR1 = EncryptA(r1)
     let c_r1 = Paillier::encrypt(&ek, RawPlaintext::from(r1.clone()));
-
-
-    // 3. Send CA and CR1 to Bob
-    // (Simulation: omitted as it's not part of the protocol logic)
 
     // 4. Bob selects β' <- ZN
     let beta_prime = BigInt::sample_below(&ek.n);
@@ -54,6 +46,13 @@ fn mta_2(
 
     // 9. Alice sets δ 1 = α' mod q
     let delta_1 = Scalar::from(BigInt::from(dec_alice) % &ek.n);
+    let left = &delta_1.to_bigint() + &delta_2.to_bigint();
+    // dbg!(&left);
+    let right = (a1*&r2) + (a2*&r1);
+    // dbg!(&right);
+    assert_eq!(left, right, "Verification failed: Left side ({}) is not equal to right side ({})", left, right);
+
+    println!("MTA Test Satisfied");
 
     (delta_1, delta_2)
 }
@@ -96,18 +95,16 @@ fn mta(a: &Scalar<Secp256k1>, b: &Scalar<Secp256k1>) -> (Scalar<Secp256k1>, Scal
 fn main() {
     let alice_input = Scalar::<Secp256k1>::random();
     let bob_input = Scalar::<Secp256k1>::random();
-    let (ek, dk) = Paillier::keypair().keys();
-    let r1 = BigInt::sample_below(&ek.n);
-    let r2 = BigInt::sample_below(&ek.n);
-    let (delta_1, delta_2) = mta_2(&alice_input, &bob_input, &r1, &r2, &ek, &dk);
+    
+    let (delta_1, delta_2) = mta_2(&alice_input, &bob_input);
 
-    let left = &delta_1.to_bigint() + &delta_2.to_bigint();
-    // dbg!(&left);
-    let right = (&alice_input.to_bigint()*&r2) + (&bob_input.to_bigint()*&r1);
-    // dbg!(&right);
-    assert_eq!(left, right, "Verification failed: Left side ({}) is not equal to right side ({})", left, right);
+    // let left = &delta_1.to_bigint() + &delta_2.to_bigint();
+    // // dbg!(&left);
+    // let right = (&alice_input.to_bigint()*&r2) + (&bob_input.to_bigint()*&r1);
+    // // dbg!(&right);
+    // assert_eq!(left, right, "Verification failed: Left side ({}) is not equal to right side ({})", left, right);
 
-    println!("MTA Test Satisfied");
+    // println!("MTA Test Satisfied");
     // Verify
     // let left = (&alpha + &beta).to_bigint();
     // dbg!(&left);
